@@ -46,3 +46,15 @@ SELECT activity_date AS day, COUNT(DISTINCT user_id) AS active_users
 FROM Activity
 WHERE activity_date BETWEEN '2019-06-28' AND '2019-07-27'
 GROUP BY activity_date;
+
+#9
+SELECT 
+    s.user_id,
+    ROUND(
+        IFNULL(SUM(c.action = 'confirmed') / COUNT(c.action), 0),
+        2
+    ) AS confirmation_rate
+FROM Signups s
+LEFT JOIN Confirmations c
+ON s.user_id = c.user_id
+GROUP BY s.user_id;

@@ -1,0 +1,206 @@
+// TELA DE LOGIN
+
+@Composable
+fun LoginUI() {
+    var email by remember { mutableStateOf("") }
+    var senha by remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "Login",
+            style = MaterialTheme.typography.h4,
+            modifier = Modifier.padding(bottom = 32.dp)
+        )
+
+        TextField(
+            value = email,
+            onValueChange = { email = it },
+            label = { Text("Email") },
+            placeholder = { Text("Digite seu email") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        TextField(
+            value = senha,
+            onValueChange = { senha = it },
+            label = { Text("Senha") },
+            placeholder = { Text("Digite sua senha") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation()
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Button(
+            onClick = { /* Lógica de autenticação */ },
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.buttonColors(backgroundColor = Color.Blue) // Altere para a cor do seu protótipo
+        ) {
+            Text(text = "Entrar")
+        }
+    }
+}
+
+//TELA DE DASHBOARD
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+// Definição das cores baseadas no estilo do jojo-system.html
+val Ink = Color(0xFF0C0A14)
+val Panel = Color(0xFF1D1630)
+val Gold = Color(0xFFF5C518)
+val Magenta = Color(0xFFE6007E)
+val Cyan = Color(0xFF19D3DA)
+
+@Composable
+fun DashboardUI(onLogoutClick: () -> Unit) {
+    var oraCount by remember { mutableStateOf(0) }
+    
+    // Lista simulada de atividades baseada no HTML
+    val atividades = remember {
+        listOf(
+            "Star Platinum ativou Parada do Tempo",
+            "The World sincronizou Soco Estelar",
+            "Crazy Diamond recarregou Cura",
+            "Gold Experience calibrou Reset"
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            // Topbar com Título e Botão de Sair
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Panel)
+                    .border(bottom = 2.dp, color = Gold)
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "STAND OPERATOR",
+                    color = Gold,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+                Button(
+                    onClick = onLogoutClick,
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color.Transparent),
+                    modifier = Modifier.border(2.dp, Magenta, RoundedCornerShape(4.dp))
+                ) {
+                    Text("SAIR", color = Magenta, fontWeight = FontWeight.Bold)
+                }
+            }
+        },
+        backgroundColor = Ink
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(16.dp)
+        ) {
+            
+            // --- SEÇÃO 1: ESTATÍSTICAS ---
+            Text("STATUS DO SISTEMA", color = Cyan, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpacerBetween
+            ) {
+                // Card 1
+                CardStat(titulo = "Stands Ativos", valor = "42", corBorda = Gold, modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(8.dp))
+                // Card 2
+                CardStat(titulo = "Energia (kJ)", valor = "780", corBorda = Cyan, modifier = Modifier.weight(1f))
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // --- SEÇÃO 2: ATIVIDADE DOS STANDS (FEED) ---
+            Text("ATIVIDADE RECENTE", color = Gold, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(atividades) { atividade ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Panel)
+                            .padding(12.dp)
+                            .border(start = 3.dp, color = Magenta)
+                    ) {
+                        Text(text = atividade, color = Color.White, fontSize = 14.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // --- SEÇÃO 3: ÁREA DE AÇÃO (ORA ZONE) ---
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Panel)
+                    .border(1.dp, Gold, RoundedCornerShape(8.dp))
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Pancadas: $oraCount",
+                    color = Cyan,
+                    fontSize = 16.sp,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                Button(
+                    onClick = { oraCount += 18 }, // Simula a rajada de socos
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Magenta),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("ORA ORA ORA", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CardStat(titulo: String, valor: String, corBorda: Color, modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .background(Panel)
+            .border(2.dp, corBorda, RoundedCornerShape(4.dp))
+            .padding(12.dp)
+    ) {
+        Text(text = titulo, color = Color.Gray, fontSize = 12.sp)
+        Text(text = valor, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+    }
+}

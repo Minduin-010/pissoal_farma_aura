@@ -1,0 +1,165 @@
+package org.example
+
+import java.sql.Connection
+import java.sql.DriverManager
+import java.util.Scanner
+
+fun main() {
+    val url = "jdbc:sqlite:projeto.db"
+    val scanner = Scanner(System.`in`)
+
+    DriverManager.getConnection(url).use { conexao ->
+        println(" ---- Conectado ao banco de dados SQLite local! ---- ")
+        conexao.createStatement().execute("PRAGMA foreign_keys = ON;")
+
+        // Inicializa o banco
+        criarTabelas(conexao)
+        inserirDadosIniciais(conexao)
+
+        // Loop do Menu Interativo
+        while (true) {
+            println("\n--- GERENCIADOR DE TAREFAS ---")
+            println("1. Listar Tarefas")
+            println("2. Adicionar Nova Tarefa")
+            println("3. Excluir uma Tarefa")
+            println("4. Sair")
+            print("Escolha uma opcao: ")
+
+            when (scanner.nextLine()) {
+                "1" -> listarTarefasComRelacionamento(conexao)
+                "2" -> menuAdicionarTarefa(conexao, scanner)
+                "3" -> menuExcluirTarefa(conexao, scanner)
+                "4" -> {
+                    println("Saindo do sistema. Ate logo!")
+                    break
+                }
+                else -> println("Opcao invalida! Tente novamente.")
+            }
+        }
+    }
+}
+
+// ==========================================
+// FUNÇÕES DE OPERAÇÃO DO BANCO (CRUD)
+// ==========================================
+
+// 1. Criação das Tabelas
+fun criarTabelas(conexao: Connection) {
+    val sqlUsuarios = "CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL);"
+    val sqlCategorias = "CREATE TABLE IF NOT EXISTS categorias (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT NOT NULL);"
+    val sqlTarefas = """
+        CREATE TABLE IF NOT EXISTS tarefas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            titulo TEXT NOT NULL,
+            usuario_id INTEGER,
+            categoria_id INTEGER,
+            FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+            FOREIGN KEY (categoria_id) REFERENCES categorias(id) ON DELETE CASCADE
+        );
+    """
+    conexao.createStatement().use { stmt ->
+        stmt.execute(sqlUsuarios)
+        stmt.execute(sqlCategorias)
+        stmt.execute(sqlTarefas)
+    }
+}
+
+// 2. Dados Iniciais de teste (só entram se o banco estiver vazio)
+fun inserirDadosIniciais(conexao: Connection) {
+    conexao.createStatement().use { stmt ->
+        val rs = stmt.executeQuery("SELECT COUNT(*) FROM usuarios")
+        if (rs.next() && rs.getInt(1) > 0) return
+
+        // Criando alguns usuários e categorias padrão para vincular nas tarefas
+        stmt.executeUpdate("INSERT INTO usuarios (nome) VALUES ('Satoru Gojo')")
+        stmt.executeUpdate("INSERT INTO usuarios (nome) VALUES ('Ryomen Sukuna')")
+        stmt.executeUpdate("INSERT INTO categorias (nome) VALUES ('Faculdade')")
+        stmt.executeUpdate("INSERT INTO categorias (nome) VALUES ('Trabalho')")
+
+        stmt.executeUpdate("INSERT INTO tarefas (titulo, usuario_id, categoria_id) VALUES ('Entregar projeto', 1, 1)")
+    }
+}
+
+// 3. Listar (READ)
+fun listarTarefasComRelacionamento(conexao: Connection) {
+    val sqlConsulta = """
+        SELECT t.id, t.titulo, u.nome AS usuario, c.nome AS categoria 
+        FROM tarefas t
+        JOIN usuarios u ON t.usuario_id = u.id
+        JOIN categorias c ON t.categoria_id = c.id
+    """
+    println("\n--- TAREFAS CADASTRADAS ---")
+    var encontrou = false
+
+    conexao.createStatement().use { stmt ->
+        val rs = stmt.executeQuery(sqlConsulta)
+        while (rs.next()) {
+            encontrou = true
+            println("[ID: ${rs.getInt("id")}] \"${rs.getString("titulo")}\" | Resp: ${rs.getString("usuario")} | Cat: ${rs.getString("categoria")}")
+        }
+    }
+    if (!encontrou) println("Nenhuma tarefa cadastrada ainda.")
+    println("--------------------------------")
+}
+
+// 4. Adicionar (CREATE)
+fun menuAdicionarTarefa(conexao: Connection, scanner: Scanner) {
+    println("\n--- ADICIONAR NOVA TAREFA ---")
+    print("Digite o titulo da tarefa: ")
+    val titulo = scanner.nextLine()
+
+    // Mostra as opções de usuários existentes
+    println("\nUsuarios disponiveis:")
+    conexao.createStatement().use { stmt ->
+        val rs = stmt.executeQuery("SELECT id, nome FROM usuarios")
+        while (rs.next()) println("ID: ${rs.getInt("id")} - ${rs.getString("nome")}")
+    }
+    print("Escolha o ID do usuario responsavel: ")
+    val usuarioId = scanner.nextLine().toIntOrNull() ?: 1
+
+    // Mostra as opções de categorias existentes
+    println("\nCategorias disponiveis:")
+    conexao.createStatement().use { stmt ->
+        val rs = stmt.executeQuery("SELECT id, nome FROM categorias")
+        while (rs.next()) println("ID: ${rs.getInt("id")} - ${rs.getString("nome")}")
+    }
+    print("Escolha o ID da categoria: ")
+    val categoriaId = scanner.nextLine().toIntOrNull() ?: 1
+
+    // Insere de forma segura usando PreparedStatement (evita SQL Injection)
+    val sqlInserir = "INSERT INTO tarefas (titulo, usuario_id, categoria_id) VALUES (?, ?, ?)"
+    conexao.prepareStatement(sqlInserir).use { pstmt ->
+        pstmt.setString(1, titulo)
+        pstmt.setInt(2, usuarioId)
+        pstmt.setInt(3, categoriaId)
+        pstmt.executeUpdate()
+    }
+    println("Tarefa adicionada com sucesso!")
+}
+
+// 5. Excluir (DELETE)
+fun menuExcluirTarefa(conexao: Connection, scanner: Scanner) {
+    println("\n--- EXCLUIR TAREFA ---")
+    // Mostra as tarefas primeiro para o usuário saber qual ID quer apagar
+    listarTarefasComRelacionamento(conexao)
+
+    print("\nDigite o ID da tarefa que deseja excluir: ")
+    val idStr = scanner.nextLine()
+    val id = idStr.toIntOrNull()
+
+    if (id == null) {
+        println("ID invalido.")
+        return
+    }
+
+    val sqlExcluir = "DELETE FROM tarefas WHERE id = ?"
+    conexao.prepareStatement(sqlExcluir).use { pstmt ->
+        pstmt.setInt(1, id)
+        val linhasAfetadas = pstmt.executeUpdate()
+        if (linhasAfetadas > 0) {
+            println("Tarefa com ID $id excluida com sucesso!")
+        } else {
+            println("!!! Nenhuma tarefa encontrada com o ID $id. !!!")
+        }
+    }
+}
